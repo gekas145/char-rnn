@@ -42,6 +42,6 @@ net.load("char-rnn.json")
 
 net.inference_on()
 
-phrase = "Mr. Ho"
+phrase = "Mr. H"
 temperature = 0.65
 print(generate_text(phrase, temp=temperature))
