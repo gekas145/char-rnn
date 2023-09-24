@@ -1,47 +1,48 @@
-import theano.tensor as T
+from torch import nn
+from torch import distributions
+from torch.nn import functional as F
+from sherlock_net import SherlockNet
 from unidecode import unidecode
-from utils.network import NeuralNetwork
-from utils.layers import FullyConnectedLayer, LSTMCell
-from utils.losses import SparseCategoricalCrossentropy
-from utils.embedding import OneHotEmbedding
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+import config as c
+import torch
+import pickle
 
+with open("data/sherlock.txt", "r") as f:
+    vocab = f.read()
 
-def softmax(x):
-    x_exp = np.exp(x)
-    return x_exp/np.sum(x_exp)
+vocab = unidecode(vocab)
 
-def generate_text(phrase, n=2000, temp=1.0):
-    encoded_phrase = np.array([[ohe._vocab[char]] for char in phrase])
-    encoded_phrase = ohe(encoded_phrase)
-    encoded_phrase = np.squeeze(encoded_phrase, axis=1)
-
-    generated_text = net.predict(encoded_phrase, n=n, temp=temp)
-    generated_text = [vocab[char_idx] for char_idx in generated_text]
-
-    return phrase + "".join(generated_text)
-
-
-df = pd.read_parquet("data/next-character.parquet")
-vocab = list(set(unidecode("".join(df.context))))
+vocab = list(set(vocab))
 vocab.sort()
-print(len(vocab))
-print(df.shape)
+vocab = "".join(vocab)
 
-loss = SparseCategoricalCrossentropy()
-ohe = OneHotEmbedding(vocab)
+vocab2idx = dict(zip(vocab, range(len(vocab))))
 
-net = NeuralNetwork(len(vocab), loss, nepochs=10, nbatch=100, embedding=ohe)
-net.add_layer(LSTMCell(512, 100))
-net.add_layer(LSTMCell(512, 100))
-net.add_layer(FullyConnectedLayer(len(vocab), softmax, seq2seq=True))
+with open("checkpoints/sherlock_net.pt", "rb") as f:
+    state_dict = pickle.load(f)
 
-net.load("char-rnn.json")
+net = SherlockNet(len(vocab), c.lstm_output_size, c.num_layers, c.dropout)
+net.load_state_dict(state_dict)
+net.eval()
 
-net.inference_on()
 
-phrase = "Mr. H"
-temperature = 0.65
-print(generate_text(phrase, temp=temperature))
+
+init_text = "Mr. H"
+
+inputs = torch.tensor([vocab2idx[chr] for chr in init_text])
+
+inputs = F.one_hot(inputs, num_classes=len(vocab)).type(torch.float)
+
+res = net.generate_text(inputs, temp=1.1)
+
+text = "".join([vocab[idx] for idx in res])
+
+print(init_text + text)
+
+
+
+
+
+
+
+
