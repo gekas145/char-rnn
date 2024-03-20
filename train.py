@@ -65,10 +65,8 @@ for epoch in range(c.nepochs):
     for i in range(0, X_train.shape[0], c.nbatch):
         X_batch = X_train[i:i + c.nbatch, :]
         h0, c0 = get_zero_cell_state(X_batch.shape[0])
-
+        optimizer.zero_grad()
         for j in range(0, c.main_seq_len, c.sub_seq_len):
-
-            optimizer.zero_grad()
 
             loss, h0, c0 = get_loss(X_batch[:, j:j + c.sub_seq_len],
                                     X_batch[:, j + 1:j + c.sub_seq_len + 1],
@@ -78,7 +76,7 @@ for epoch in range(c.nepochs):
 
             loss.backward()
 
-            optimizer.step()
+        optimizer.step()
 
         iterations = epoch * (X_train.shape[0] // c.nbatch + int(X_train.shape[0] % c.nbatch > 0)) + i//c.nbatch
         if iterations % c.niter_info == 0:
